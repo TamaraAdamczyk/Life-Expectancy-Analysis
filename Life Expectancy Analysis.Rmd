@@ -1,0 +1,202 @@
+---
+title: "Life Expectancy Analysis"
+author: "Tamara"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+---
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(fig.width = 16, fig.height = 6)
+```
+This project aims to explore life expectancy at birth across local areas in England using publicly available dataset from Fingertips platform. Overarching goal is to practice skills in data cleaning, exploratory analysis, and visualization using RStudio. 
+This R Markdown report includes:
+•	Data reading and preparation
+•	Assessment of missing values 
+•	Distribution analysis
+•	Time-trend visualization
+•	Area ranking
+•	Variation over time
+
+This project uses tidyverse for data wrangling and manipulation and ggplot2 for visualization.
+
+Firstly, data is imported into RStudio. The original format is csv. Column names from the original table are renamed for ease of use. Original headers contain spaces, characters, numbers, punctuation and capital letters which make further analysis and code writing more laborious and error-prone. Also, dataset uses raw indicator ID i.e. 90366. It is important to identify the full name of it and assign the name, otherwise graphs will look like 'Distribution of indicator 90366' which is not very informative to anyone reading the report.
+
+For the purposes of this analysis, single year time periods were used. The dataset includes both single year values and multi year periods, with the latter representing rolling averages. Rolling averages smooth short term fluctuations, and they are not directly comparable to true annual estimates. The aim of the analysis is to examine year on year trends, identify specific annual changes, and compare areas on a like for like basis. Using only single year values ensures that all areas are assessed using the same temporal resolution and avoids mixing different types of estimates. This is why the code filters to single year periods rather than using the full dataset.
+```{r load-data}
+df <- read_csv("C:/Users/tamci/Downloads/indicator-90366-all-areas.data.csv")
+
+df <- df %>%
+  rename(
+    IndicatorID = `Indicator ID`,
+    IndicatorName = `Indicator Name`,
+    ParentCode = `Parent Code`,
+    ParentName = `Parent Name`,
+    AreaCode = `Area Code`,
+    AreaName = `Area Name`,
+    AreaType = `Area Type`,
+    CategoryType = `Category Type`,
+    Timeperiod = `Time period`,
+    LowerCI95 = `Lower CI 95.0 limit`,
+    UpperCI95 = `Upper CI 95.0 limit`,
+    LowerCI998 = `Lower CI 99.8 limit`,
+    UpperCI998 = `Upper CI 99.8 limit`,
+    ValueNote = `Value note`,
+    RecentTrend = `Recent Trend`,
+    ComparedToEngland = `Compared to England value or percentiles`,
+    TimeperiodSortable = `Time period Sortable`,
+    NewData = `New data`,
+    ComparedToGoal = `Compared to goal`,
+    TimeperiodRange = `Time period range`
+  )
+
+indicator_title <- unique(df$IndicatorName)
+indicator_title
+```
+Next step is to assess variables with incomplete data i.e. N/A, NULLs, blank cells etc. Any fields with substantial missingness may affect analysis or require cleaning. It is important to perform assessment of missing variables as a part of data quality check. There is high missingness in several variables but most of missing values are in non-essential fields. This means that essential analytical fields, e.g. Area Name or Time period are consistently populated with values and complete therefore indicating good data quality for the purpose of this analysis.
+```{r missing assessment}
+missing_summary <- df %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(everything(),
+               names_to = "variable",
+               values_to = "missing_count") %>%
+  arrange(desc(missing_count))
+
+missing_summary
+```
+Histogram is created to show distribution of life expectancy values across all areas. This is helpful to see where most areas cluster, whether there are any unusually high or low values.
+```{r histogram}
+ggplot(df, aes(x = Value)) +
+  geom_histogram(bins = 30, fill = "#2C7BB6", colour = "white") +
+  theme_minimal() +
+  labs(
+    title = paste("Distribution of", indicator_title),
+    x = "Years",
+    y = "Count"
+  )
+```
+The histogram shows that life expectancy is fairly consistent across England with the peak around ~80 years. The distribution is approximately normal without extreme skewness or heavy tails. Only a small number of areas fall at the lower or higher extremes indicating limited outliers.
+
+A box plot is created to visualize medians, interquartile ranges, and overall spread of values, and any potential outliers. It provides an overview of how life expectancy is distributed across all areas in a given year.
+```{r single-year boxplot}
+df_single_year <- df %>%
+  filter(!stringr::str_detect(Timeperiod, "-"))
+
+ggplot(df_single_year, aes(x = Timeperiod, y = Value)) +
+  geom_boxplot(fill = "#ABD9E9") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  labs(
+    title = paste(indicator_title, "by year"),
+    x = "Time period",
+    y = "Years"
+  )
+```
+Life expectancy at birth shows a long-term rise from 2001 to 2014, followed by a period of stagnation and then decline during the COVID-19 pandemic (from 2020). The boxplots show steady upward movement in the median and upper quartile during the early 2000s and 2010s with improvements slowing after 2015. Variation between areas remains persistent across the analysed time-period, with occasional narrowing followed by widening during 2020-2021. Data suggests long-term improvement interrupted by 2014-2018 stagnation and subsequently a pandemic-related shock, with persevering geographic inequalities.
+
+A multi-series line graph is created to show year-by-year trends in life expectancy for selected areas. England is used as a ‘benchmark’ to which other areas are compared, code is created to capture ‘the worst’ area with the lowest life expectancy and ‘the best area’ with the highest life expectancy. Firstly, areas are selected according to the most recent data (2023) and trends are presented across the range of available years.
+```{r best and worst areas}
+#Filtering to single year periods only
+df_single_year <- df %>%
+  filter(!stringr::str_detect(Timeperiod, "-"))
+
+#Identifying the latest single year period
+latest_period <- max(df_single_year$Timeperiod, na.rm = TRUE)
+
+#Filtering to this year
+df_latest <- df_single_year %>%
+  filter(Timeperiod == latest_period)
+
+best_area <- df_latest %>% slice_max(Value, n = 1) %>% pull(AreaName)
+worst_area <- df_latest %>% slice_min(Value, n = 1) %>% pull(AreaName)
+
+best_area
+worst_area
+```
+```{r trends}
+#Selecting areas
+areas <- c("England", "Liverpool", "Manchester", best_area, worst_area)
+
+#Plotting trends
+df_single_year %>%
+  filter(AreaName %in% areas) %>%
+  ggplot(aes(Timeperiod, Value, colour = AreaName, group = AreaName)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = paste("Trends in", indicator_title),
+    subtitle = "Year-by-year trends",
+    x = "Time period",
+    y = "Years",
+    colour = "Area"
+  )
+```
+The chart illustrates a persistent and substantial gap between the highest-performing area, Richmond upon Thames, and the lowest-performing area, Blackpool. Liverpool and Manchester are consistently below the England’s average. This graph provides another proof of persistent geographic inequalities in life expectancy with no evidence of the gap narrowing across the measured period.
+
+A dot plot is created to illustrate top 10 and bottom 10 performing areas in England for year 2023, and compare their life expectancies.
+```{r areas_top_and_bottom}
+#Filtering to single year periods
+df_single_year <- df %>%
+  filter(!stringr::str_detect(Timeperiod, "-"))
+
+#Identifying the latest single year period
+latest_period <- max(df_single_year$Timeperiod, na.rm = TRUE)
+
+#Filtering to this year
+df_latest_unique <- df_single_year %>%
+  filter(Timeperiod == latest_period)
+
+#Selecting top and bottom 10 areas
+top10 <- df_latest_unique %>% slice_max(Value, n = 10)
+bottom10 <- df_latest_unique %>% slice_min(Value, n = 10)
+
+df_top_bottom <- bind_rows(top10, bottom10)
+
+#Creating a plot
+ggplot(df_top_bottom, aes(x = reorder(AreaName, Value), y = Value)) +
+  geom_point(size = 3, colour = "#2C7BB6") +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = paste("Top 10 and Bottom 10 Areas for", indicator_title, "-", latest_period),
+    x = "Area",
+    y = "Years"
+  )
+```
+This dot plot shows approximately 10-year difference in life expectancy between the best and worst areas. The top performing areas are generally affluent, southern and rural/semi-rural while the lowest performing areas are generally northern-located post-industrial towns. These results highlight regional disparities in health outcomes consistent with public-health evidence. Areas with lowest life expectancy tend to be characterized by lower incomes, higher deprivation rates, poorer housing, and greater prevalence of chronic illnesses.
+
+A time-series line chart is created to show how the standard deviation of life expectancy changes over time (year by year). It is a clear way to assess whether areas are becoming more similar or more unequal over time.
+```{r variation single year}
+df_single_year <- df %>%
+  filter(!stringr::str_detect(Timeperiod, "-"))
+variation_single_year <- df_single_year %>%
+  group_by(Timeperiod) %>%
+  summarise(
+    sd_value = sd(Value, na.rm = TRUE)
+  )
+ggplot(variation_single_year, aes(x = Timeperiod, y = sd_value, group = 1)) +
+  geom_line(colour = "#2C7BB6", linewidth = 1.2) +
+  geom_point(colour = "#2C7BB6", size = 2) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Between-Area Variation in Life Expectancy",
+    x = "Year",
+    y = "Standard deviation (years)"
+  )
+```
+The standard deviation values are relatively small, suggesting that life expectancy across England is tightly clustered. The overall national distribution remains uniform, and most areas fall within a narrow range. Between-area variation was declining from 2001 to 2012, however after 2012 it has started increasing gradually illustrating geographic inequalities have widened over time, which is the most apparent during and after the pandemic period.
+
+Conclusions and key findings:
+•	The life expectancy is generally consistent across England, with a small standard deviation and uniform distribution peaking around 80 years.
+•	However, inequalities persist, with a 10-year age gap between the highest and the lowest areas.
+•	Areas with longest life expectancy are clustered in the South of England and are affluent. Areas with shortest life expectancy are located mainly in the North of England, more deprived and post-industrial.
+•	Trends over time show no improvement in narrowing of the gap. Relative positions of areas remain stable across measured period (2001-2023).
+•	COVID-19 pandemic had a negative impact on the median life expectancy across all areas, simultaneously variation increased between areas suggesting uneven impacts across communities.
