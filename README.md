@@ -60,3 +60,10 @@ The standard deviation values are relatively small, suggesting that life expecta
 - Areas with longest life expectancy are clustered in the South of England and are affluent. Areas with shortest life expectancy are located mainly in the North of England, more deprived and post-industrial.
 - Trends over time show no improvement in narrowing of the gap. Relative positions of areas remain stable across measured period (2001-2023).
 - COVID-19 pandemic had a negative impact on the median life expectancy across all areas, simultaneously variation increased between areas suggesting uneven impacts across communities.
+
+# FURTHER DIRECTIONS
+- Research in-depth to uncover sources of inequalities.
+- Expand introduction and conclusion sections.
+- Attach full reference list.
+- Add figure numbers and descriptions to each figure throughout the work.
+- Plan additional analysis (I am currently planning further steps to enrich this study, this is work in progress).
