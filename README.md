@@ -54,7 +54,7 @@ A time-series line chart is created to show how the standard deviation of life e
 
 The standard deviation values are relatively small, suggesting that life expectancy across England is tightly clustered. The overall national distribution remains uniform, and most areas fall within a narrow range. Between-area variation was declining from 2001 to 2012, however after 2012 it has started increasing gradually illustrating geographic inequalities have widened over time, which is the most apparent during and after the pandemic period.
 
-Conclusions and key findings: 
+# CONCLUSIONS
 - The life expectancy is generally consistent across England, with a small standard deviation and uniform distribution peaking around 80 years.
 - However, inequalities persist, with a 10-year age gap between the highest and the lowest areas.
 - Areas with longest life expectancy are clustered in the South of England and are affluent. Areas with shortest life expectancy are located mainly in the North of England, more deprived and post-industrial.
